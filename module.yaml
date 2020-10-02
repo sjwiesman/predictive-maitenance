@@ -1,0 +1,52 @@
+version: "1.0"
+module:
+  meta:
+    type: remote
+  spec:
+    functions:
+      - function:
+          meta:
+            kind: http
+            type: digital-twin/server
+          spec:
+            endpoint: http://digital-twins:8001/functions
+            states:
+              - history
+              - server-health-state
+      - function:
+          meta:
+            kind: http
+            type: digital-twin/rack
+          spec:
+            endpoint: http://digital-twins:8000/functions
+            states:
+              - servers
+      - function:
+          meta:
+            kind: http
+            type: model/predictive-maintenance
+          spec:
+            endpoint: http://model-function:8000/functions
+    ingresses:
+      - ingress:
+          meta:
+            type: statefun.kafka.io/routable-protobuf-ingress
+            id: io/server-reports
+          spec:
+            address: kafka.kafka-ca1.svc.cluster.local:9092
+            consumerGroupId: server-report-id
+            topics:
+              - topic: reports
+                typeUrl: com.googleapis/com.ververica.ServerMetricReport
+                targets:
+                  - digital-twin/server
+    egresses:
+      - egress:
+          meta:
+            type: statefun.kafka.io/generic-egress
+            id: io/repairs
+          spec:
+            address: kafka.kafka-ca1.svc.cluster.local:9092
+            deliverySemantic:
+              type: exactly-once
+              transactionTimeoutMillis: 100000
